@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"time"
 
@@ -16,8 +15,15 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
+	// Validasi ekstensi file
+	ext := filepath.Ext(file.Filename)
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		c.JSON(400, gin.H{"error": "Format file tidak didukung! Pakai jpg/png/webp saja."})
+		return
+	}
+
 	// Ganti nama file biar unik
-	filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+	filename := fmt.Sprintf("%d%s", time.Now().Unix(), ext)
 	path := "uploads/" + filename
 
 	if err := c.SaveUploadedFile(file, path); err != nil {
@@ -25,7 +31,13 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
-	// Balikin URL lengkap (sesuaikan domain nanti saat deploy)
-	fullURL := "http://localhost:8080/uploads/" + filename
+	// Buat URL lengkap secara dinamis
+	scheme := "http"
+	if c.Request.TLS != nil {
+		scheme = "https"
+	}
+	
+	fullURL := fmt.Sprintf("%s://%s/uploads/%s", scheme, c.Request.Host, filename)
+	
 	c.JSON(200, gin.H{"url": fullURL})
 }
